@@ -1,0 +1,1 @@
+CREATE USER flashcards WITH PASSWORD 'flashcards';
