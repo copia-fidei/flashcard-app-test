@@ -2,13 +2,18 @@ Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-24.04"
   config.vm.box_version = "202510.26.0"
 
+  # Karaf
   config.vm.network "forwarded_port", guest: 8181, host: 18181, host_ip: "127.0.0.1"
+  # PostgreSQL
   config.vm.network "forwarded_port", guest: 5432, host: 15432, host_ip: "127.0.0.1"
+  # Karaf debug, uncomment if needed
+  #config.vm.network "forwarded_port", guest: 5005, host:  5005, host_ip: "127.0.0.1"
+
   config.vm.synced_folder "postgres-scripts", "/home/vagrant/postgres-scripts", create: true
 
   config.vm.provision "shell", name: "apt", inline: <<-SHELL
     sudo apt update
-    sudo apt install -y postgresql
+    sudo apt install -y postgresql # Version 16
     sudo apt install -y openjdk-21-jdk-headless
     sudo apt install -y tree
 
@@ -27,6 +32,8 @@ Vagrant.configure("2") do |config|
     if [ -z $(grep "$line" /etc/postgresql/16/main/pg_hba.conf) ]; then
            echo "$line" >> /etc/postgresql/16/main/pg_hba.conf
     fi
+
+    sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/16/main/postgresql.conf
   SHELL
 
   config.vm.provision "shell", name: "karaf", privileged: false, inline: <<-SHELL
@@ -74,6 +81,7 @@ Vagrant.configure("2") do |config|
     ./client -b <<< "bundle:install mvn:org.glassfish.jersey.ext/jersey-mvc-mustache/2.47"
     ./client -b <<< "bundle:install wrap:mvn:com.github.spullara.mustache.java/compiler/0.9.14"
     ./client -b <<< "bundle:install mvn:org.jvnet.mimepull/mimepull/1.9.15"
+    ./client -b <<< "bundle:install mvn:com.univocity/univocity-parsers/2.9.1"
 
     ./client -b <<< "feature:install jdbc"
     ./client -b <<< "jdbc:ds-create -dc org.postgresql.Driver -url jdbc:postgresql://localhost:5432/collections --username flashcards --password flashcards collections"
