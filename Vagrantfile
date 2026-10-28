@@ -12,24 +12,30 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder "postgres-scripts", "/home/vagrant/postgres-scripts", create: true
 
   config.vm.provision "shell", name: "apt", inline: <<-SHELL
-    sudo apt update
-    sudo apt install -y postgresql # Version 16
-    sudo apt install -y openjdk-21-jdk-headless
-    sudo apt install -y tree
+    apt update
+    apt install -y tree # Utility to print directory structure
+  SHELL
+
+  config.vm.provision "shell", name: "java", inline: <<-SHELL
+    apt install -y openjdk-21-jdk-headless
 
     JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
     if [ -z $(grep JAVA_HOME /etc/environment) ]; then
         echo "JAVA_HOME=$JAVA_HOME" >> /etc/environment
     fi
+  SHELL
+
+  config.vm.provision "shell", name: "postgres", inline: <<-SHELL
+    apt install -y postgresql # Version 16
 
     cd postgres-scripts
 
-    sudo -u postgres psql -f ./create-user_postgres.sql
-    sudo -u postgres psql -f ./create-database_postgres.sql
-    sudo -u postgres psql -f ./grant-database-ownership-to-user_postgres.sql -d collections
+    sudo -u postgres psql -f ./create-user.sql
+    sudo -u postgres psql -f ./create-database.sql
+    sudo -u postgres psql -f ./grant-database-ownership-to-user.sql
 
-    line = "host    collections     flashcards      10.0.2.2/32             scram-sha-256"
-    if [ -z $(grep "$line" /etc/postgresql/16/main/pg_hba.conf) ]; then
+    line="host    collections     flashcards      10.0.2.2/32             scram-sha-256"
+    if ! grep --fixed-strings --line-regexp "$line" /etc/postgresql/16/main/pg_hba.conf; then
            echo "$line" >> /etc/postgresql/16/main/pg_hba.conf
     fi
 
@@ -48,7 +54,7 @@ Vagrant.configure("2") do |config|
 
     size=$(du -b "$KARAF_ZIP" | cut -f 1)
     size=${size:-0}
-    if [ "$size" -ne "$EXPECTED_KARAF_ZIP_SIZE" ]; then
+    if (( "$size" != "$EXPECTED_KARAF_ZIP_SIZE" )); then
         wget https://archive.apache.org/dist/karaf/4.4.11/apache-karaf-4.4.11.tar.gz
     fi
     rm -r apache-karaf-4.4.11
@@ -65,7 +71,7 @@ Vagrant.configure("2") do |config|
     ./start
 
     until ./client version; do
-        ((++counter == 15)) && break
+        ((++counter == 10)) && break
         sleep 1
     done
 
