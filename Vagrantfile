@@ -34,9 +34,10 @@ Vagrant.configure("2") do |config|
     sudo -u postgres psql -f ./create-database.sql
     sudo -u postgres psql -f ./grant-database-ownership-to-user.sql
 
+    pg_hba_conf="/etc/postgresql/16/main/pg_hba.conf"
     line="host    collections     flashcards      10.0.2.2/32             scram-sha-256"
-    if ! grep --fixed-strings --line-regexp "$line" /etc/postgresql/16/main/pg_hba.conf; then
-           echo "$line" >> /etc/postgresql/16/main/pg_hba.conf
+    if ! grep --fixed-strings --line-regexp "$line" "$pg_hba_conf"; then
+           echo "$line" >> "$pg_hba_conf"
     fi
 
     sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/16/main/postgresql.conf
@@ -46,7 +47,7 @@ Vagrant.configure("2") do |config|
     sudo systemctl stop karaf.service
     sudo systemctl disable karaf.service
 
-    source /etc/environment
+    export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
     EXPECTED_KARAF_ZIP_SIZE=37108159
     KARAF_ZIP=apache-karaf-4.4.11.tar.gz
@@ -58,7 +59,7 @@ Vagrant.configure("2") do |config|
         wget https://archive.apache.org/dist/karaf/4.4.11/apache-karaf-4.4.11.tar.gz
     fi
     rm -r apache-karaf-4.4.11
-    tar -xvf "$KARAF_ZIP"
+    tar -xf "$KARAF_ZIP"
 
     cd apache-karaf-4.4.11/etc
 
